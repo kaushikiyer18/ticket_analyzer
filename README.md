@@ -1,22 +1,11 @@
-# 🧠 Ticket Analyzer
+# Ticket Analyzer Tool
 
-A simple and scalable XML-based ticket analysis tool built in Python.
+This tool processes Freshdesk XML ticket exports and generates:
+- A ticket metadata CSV file
+- A full Customer Support Insights report with auto-clustering of problem types.
 
-## 📂 What It Does
+## Setup Instructions
 
-This tool reads Freshdesk-style XML files containing ticket data + conversations, analyzes them, and outputs insights such as:
-- Ticket count
-- Status breakdown
-- Average resolution time
-- CSV report generation
-
-It supports multiple XML files and can be automated to run daily using `schedule`.
-
----
-
-## 🚀 How to Use
-
-### 🔧 1. Clone the repo
+1. Clone the repo
 ```bash
-git clone https://github.com/kaushikiyer18/ticket_analyzer.git
-cd ticket_analyzer
+git clone https://github.com/<your-username>/<your-repo-name>.git
