@@ -1,21 +1,40 @@
 import xml.etree.ElementTree as ET
 import os
+import html
 
 def parse_ticket_xml(file_path):
     tickets = []
-    context = ET.iterparse(file_path, events=("start", "end"))
-    _, root = next(context)
+    tree = ET.parse(file_path)
+    root = tree.getroot()
 
-    ticket = {}
-    for event, elem in context:
-        if event == "end":
-            if elem.tag == "ticket":
-                tickets.append(ticket.copy())
-                ticket.clear()
-            elif elem.tag in {"id", "subject", "status", "priority", "created_at", "updated_at"}:
-                ticket[elem.tag] = elem.text
-        elem.clear()
+    for ticket_elem in root.findall('.//helpdesk-ticket'):
+        display_id = safe_find_text(ticket_elem, 'display-id')
+        subject = safe_find_text(ticket_elem, 'subject')
+        priority = safe_find_text(ticket_elem, 'priority')
+        ticket_type = safe_find_text(ticket_elem, 'ticket-type')
+        created_at = safe_find_text(ticket_elem, 'created-at')
+        account_tier = safe_find_text(ticket_elem, 'custom-field:account-tier')
+        issue_type = safe_find_text(ticket_elem, 'custom-field:issue-type')
+        company_name = safe_find_text(ticket_elem, 'company-name')
+
+        ticket = {
+            'ticket_id': display_id,
+            'subject': subject,
+            'priority': priority,
+            'ticket_type': ticket_type,
+            'created_at': created_at,
+            'account_tier': account_tier,
+            'issue_type': issue_type,
+            'company_name': company_name
+        }
+        tickets.append(ticket)
     return tickets
+
+def safe_find_text(element, tag_name):
+    tag = element.find(tag_name)
+    if tag is not None and tag.text:
+        return tag.text.strip()
+    return ''
 
 def parse_all_xmls(folder_path):
     all_tickets = []
