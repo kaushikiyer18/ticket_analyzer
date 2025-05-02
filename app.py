@@ -89,7 +89,7 @@ if uploaded_files and 'analyze_button' in locals() and analyze_button:
             )
 
         # TXT download (insights)
-        if insights_path and os.path.exists(insights_path):
+if insights_path and os.path.exists(insights_path):
     with open(insights_path, "rb") as f:
         st.download_button(
             label="Download Insights Report (TXT)",
@@ -99,6 +99,7 @@ if uploaded_files and 'analyze_button' in locals() and analyze_button:
         )
 else:
     st.warning("⚠️ No insights report was generated.")
+
 
 
         st.caption("Reports are generated based on uploaded XML ticket exports.")
