@@ -63,7 +63,7 @@ if uploaded_files and 'analyze_button' in locals() and analyze_button:
 
         # Save outputs
         df.to_csv(csv_filename, index=False)
-        generate_insights(folder_path)
+        insights_path = generate_insights(folder_path)
 
         st.success("✅ Analysis completed successfully!")
 
@@ -89,16 +89,17 @@ if uploaded_files and 'analyze_button' in locals() and analyze_button:
             )
 
         # TXT download (insights)
-        if os.path.exists(insights_filename):
-            with open(insights_filename, "rb") as f:
-                st.download_button(
-                    label="Download Insights Report (TXT)",
-                    data=f,
-                    file_name=insights_filename,
-                    mime="text/plain"
-                )
-        else:
-            st.warning("⚠️ No insights report file found.")
+        if insights_path and os.path.exists(insights_path):
+    with open(insights_path, "rb") as f:
+        st.download_button(
+            label="Download Insights Report (TXT)",
+            data=f,
+            file_name=os.path.basename(insights_path),
+            mime="text/plain"
+        )
+else:
+    st.warning("⚠️ No insights report was generated.")
+
 
         st.caption("Reports are generated based on uploaded XML ticket exports.")
     else:
