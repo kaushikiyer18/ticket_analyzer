@@ -6,28 +6,24 @@ from parser import parse_ticket_xml
 from analyzer import analyze_tickets
 from conversation_analyzer import generate_insights
 
-# Streamlit page settings
+# Set page config
 st.set_page_config(page_title="Customer Support Ticket Analyzer", page_icon="🎟️", layout="wide")
 
-# Title and Subheader
 st.title("🎟️ Customer Support Ticket Analyzer")
 st.subheader("Analyze Freshdesk ticket exports and uncover trends easily 🚀")
-
 st.markdown("---")
 
-# Upload and Analyze Section
+# Layout columns
 col1, col2 = st.columns([2, 3])
 
 UPLOAD_FOLDER = "uploaded_xmls"
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Save uploaded file
 def save_uploaded_file(uploaded_file):
     with open(os.path.join(UPLOAD_FOLDER, uploaded_file.name), "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-# Left Column: Upload Files
+# LEFT: Upload files
 with col1:
     st.header("📂 Upload XML Files")
     uploaded_files = st.file_uploader("Select one or more Freshdesk XML exports", type=["xml"], accept_multiple_files=True)
@@ -38,23 +34,20 @@ with col1:
 
         analyze_button = st.button("🚀 Analyze Tickets")
 
-# Right Column: Metrics & Info
+# RIGHT: Ticket summary info
 with col2:
     st.header("📊 Ticket Summary")
-
     if uploaded_files:
-        st.info(f"**{len(uploaded_files)} files uploaded.** Ready for analysis! ✅")
+        st.info(f"✅ {len(uploaded_files)} files uploaded and ready for analysis.")
     else:
-        st.warning("👈 Please upload XML files to proceed.")
+        st.warning("👈 Please upload XML files to begin.")
 
-# Main processing after Analyze button click
+# MAIN: Run analysis when button clicked
 if uploaded_files and 'analyze_button' in locals() and analyze_button:
-    folder_path = UPLOAD_FOLDER
     tickets = []
-
-    for filename in os.listdir(folder_path):
+    for filename in os.listdir(UPLOAD_FOLDER):
         if filename.endswith('.xml'):
-            full_path = os.path.join(folder_path, filename)
+            full_path = os.path.join(UPLOAD_FOLDER, filename)
             tickets.extend(parse_ticket_xml(full_path))
 
     if tickets:
@@ -65,38 +58,41 @@ if uploaded_files and 'analyze_button' in locals() and analyze_button:
         insights_filename = f"insights_report_{today}.txt"
 
         df.to_csv(csv_filename, index=False)
-        generate_insights(folder_path)
+        generate_insights(UPLOAD_FOLDER)
 
         st.success("✅ Analysis completed successfully!")
 
-        # Display small preview
         st.subheader("📄 Sample Ticket Data")
         st.dataframe(df.head(10))
 
-        # Show Metrics
         st.subheader("📈 Quick Metrics")
-        st.metric(label="Total Tickets", value=len(df))
-        st.metric(label="Date", value=today)
+        st.metric("Total Tickets", len(df))
+        st.metric("Date", today)
 
-        # Download Buttons
         st.subheader("📥 Download Results")
+
+        # Download ticket data
         with open(csv_filename, "rb") as f:
             st.download_button(
-                label="Download Ticket Data (CSV)",
+                label="📥 Download Ticket Data (CSV)",
                 data=f,
                 file_name=csv_filename,
                 mime="text/csv"
             )
 
-        with open(insights_filename, "rb") as f:
-            st.download_button(
-                label="Download Insights Report (TXT)",
-                data=f,
-                file_name=insights_filename,
-                mime="text/plain"
-            )
+        # Download insights file if it exists
+        if os.path.exists(insights_filename):
+            with open(insights_filename, "rb") as f:
+                st.download_button(
+                    label="📥 Download Insights Report (TXT)",
+                    data=f,
+                    file_name=insights_filename,
+                    mime="text/plain"
+                )
+        else:
+            st.warning("⚠️ No insights report found. Please check if it was generated correctly.")
 
         st.caption("Reports are generated based on uploaded XML ticket exports.")
 
     else:
-        st.error("❗ No valid tickets found. Please verify your XML files.")
+        st.error("❗ No valid tickets found in the uploaded XML files.")
