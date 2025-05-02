@@ -2,25 +2,15 @@ import os
 import re
 from collections import defaultdict
 from datetime import datetime
-
-# Trend category mapping: keywords → category name
-TREND_CATEGORIES = {
-    "dlt|netcore certified|sms failure|sender id": "DLT Configuration Issues",
-    "approval|submitted|approval pending": "Approval Delays",
-    "escalation matrix|urgent|escalated|follow up": "High Escalation Volume",
-    "email error|not received|smtp|bounce|email delivery": "Email Delivery Issues",
-    "not working|failed|bug|error|issue|unable": "Generic System Errors",
-    "configuration|setup|access denied|not able to login": "Account Access or Configuration",
-    "order issue|order not received|invoice": "Order or Billing Issues",
-}
+from trend_categories import TREND_CATEGORIES  # ✅ new import
 
 def clean_text(text):
     if not text:
         return ""
-    text = re.sub(r"<[^>]+>", " ", text)      # remove HTML tags
-    text = re.sub(r"http\S+", "", text)       # remove URLs
-    text = re.sub(r"[^a-zA-Z0-9\s]", " ", text)  # remove punctuation
-    text = re.sub(r"\s+", " ", text)          # normalize whitespace
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"http\S+", "", text)
+    text = re.sub(r"[^a-zA-Z0-9\s]", " ", text)
+    text = re.sub(r"\s+", " ", text)
     return text.lower().strip()
 
 def match_category(text):
@@ -41,6 +31,7 @@ def generate_insights(folder_path):
 
     category_counts = defaultdict(int)
     example_texts = defaultdict(list)
+    unmatched_messages = []
 
     for ticket in all_tickets:
         raw_text = ticket.get("combined_text", "")
@@ -50,9 +41,12 @@ def generate_insights(folder_path):
             category_counts[category] += 1
             if len(example_texts[category]) < 3:
                 example_texts[category].append(cleaned[:150] + "...")
+        else:
+            unmatched_messages.append(cleaned)
 
     today = datetime.now().strftime("%Y%m%d")
     output_file = f"insights_report_{today}.txt"
+    unmatched_file = "unmatched_samples.txt"
 
     with open(output_file, "w") as f:
         f.write("Customer Support Trends Report\n")
@@ -60,16 +54,19 @@ def generate_insights(folder_path):
         f.write(f"Generated on: {today}\n\n")
 
         if not category_counts:
-            f.write("⚠️ No clear trend categories were detected.\n")
-            return output_file
+            f.write("⚠️ No trend categories matched.\n")
+        else:
+            f.write("Top Problem Categories:\n")
+            f.write("------------------------\n")
+            for category, count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True):
+                f.write(f"– {category} ({count} occurrences)\n")
+                for example in example_texts[category]:
+                    f.write(f"    • {example}\n")
+                f.write("\n")
 
-        f.write("Top Problem Categories:\n")
-        f.write("------------------------\n")
-
-        for category, count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True):
-            f.write(f"– {category} ({count} occurrences)\n")
-            for example in example_texts[category]:
-                f.write(f"    • {example}\n")
-            f.write("\n")
+    if unmatched_messages:
+        with open(unmatched_file, "w") as f:
+            for msg in unmatched_messages:
+                f.write(msg[:250] + "\n")
 
     return output_file
