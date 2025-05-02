@@ -123,6 +123,18 @@ if uploaded_files and 'analyze_button' in locals() and analyze_button:
                 mime="text/plain"
             )
 
+        # Categorized ticket map CSV
+        categorized_map_file = f"categorized_ticket_map_{today}.csv"
+
+        if Path(categorized_map_file).exists():
+            cat_map_bytes = Path(categorized_map_file).read_bytes()
+            st.download_button(
+                label="Download Categorized Tickets (CSV)",
+                data=cat_map_bytes,
+                file_name=categorized_map_file,
+                mime="text/csv"
+            )
+        
         st.caption("Reports are generated based on uploaded Freshdesk XML ticket exports.")
     else:
         st.error("❗ No valid tickets found. Please check your XML files.")
