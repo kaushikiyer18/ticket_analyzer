@@ -1,31 +1,12 @@
 # trend_categories.py
 
-TREND_CATEGORIES = {
-    "DLT Configuration Issues": [
-        "dlt", "template id", "entity id", "header failure", "failed to submit dlt"
-    ],
-    "Campaign Execution Issues": [
-        "campaign", "execution", "trigger", "panel", "segment not delivered"
-    ],
-    "Approval Delays": [
-        "approval pending", "waiting for approval", "submitted for approval"
-    ],
-    "High Escalation Volume": [
-        "urgent", "critical", "asap", "multiple escalations"
-    ],
-    "Email Delivery Failures": [
-        "not received", "email delivery failed", "bounce", "not delivered"
-    ],
-    "Generic System Errors": [
-        "not working", "error occurred", "page not loading", "bug", "issue"
-    ],
-    "Account Access or Configuration": [
-        "login issue", "password reset", "access denied", "disabled", "unauthorized"
-    ],
-    "WhatsApp Channel Issues": [
-        "whatsapp", "green tick", "template rejected", "24 hour session"
-    ],
-    "Order or Billing Problems": [
-        "invoice", "billing", "charged", "amount", "payment"
-    ]
+TREND_PATTERNS = {
+    "High Escalation Volume": [r"urgent escalation", r"please escalate", r"multiple tickets", r"escalated already"],
+    "DLT Configuration Issues": [r"dlt failure", r"dlt error", r"template not approved", r"msg91 dlt"],
+    "Campaign Execution Issues": [r"run campaign", r"schedule campaign", r"campaign delay", r"test campaign"],
+    "Email Delivery Failures": [r"mail delivery failed", r"undelivered mail", r"bounce error"],
+    "Order or Billing Problems": [r"invoice issue", r"billing error", r"not invoiced", r"payment pending"],
+    "Generic System Errors": [r"system error", r"unexpected issue", r"bug observed", r"technical glitch"],
+    "WhatsApp Channel Issues": [r"whatsapp template", r"whatsapp not delivered", r"waba", r"green tick"]
 }
+
