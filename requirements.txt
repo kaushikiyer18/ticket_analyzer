@@ -1,7 +1,6 @@
-streamlit
-pandas
-scikit-learn
-beautifulsoup4
-nltk
-html5lib
-lxml
+streamlit==1.45.0
+pandas==2.2.2
+lxml==5.2.1
+scikit-learn==1.4.2
+numpy==1.26.4
+regex==2024.4.16
