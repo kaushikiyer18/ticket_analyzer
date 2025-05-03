@@ -1,30 +1,31 @@
 # trend_categories.py
 
 TREND_CATEGORIES = {
-    # DLT / SMS issues
-    "dlt|sender id|sms failure|template rejection|netcore certified": "DLT Configuration Issues",
-
-    # Email delivery issues
-    "email error|smtp|not received|bounce|email failure|blocked|email delivery": "Email Delivery Failures",
-
-    # Login & authentication
-    "login|authentication|access denied|not able to login|session expired|2fa": "Access & Authentication Issues",
-
-    # Approvals
-    "approval pending|submitted for approval|approval delay|awaiting approval": "Approval Delays",
-
-    # Escalations / urgency
-    "escalation|urgent|pending since|follow up|still waiting": "High Escalation Volume",
-
-    # Order or billing
-    "invoice|billing|order not received|payment failed": "Order/Billing Problems",
-
-    # WhatsApp-related
-    "whatsapp|bot|template not triggering|waba": "WhatsApp Channel Issues",
-
-    # Campaigns
-    "campaign|schedule|delay in execution|not triggering": "Campaign Execution Issues",
-
-    # Generic tech issues
-    "not working|error|fail|crash|issue|bug|unable to|does not work": "Generic System Errors"
+    "DLT Configuration Issues": [
+        "dlt", "template id", "entity id", "header failure", "failed to submit dlt"
+    ],
+    "Campaign Execution Issues": [
+        "campaign", "execution", "trigger", "panel", "segment not delivered"
+    ],
+    "Approval Delays": [
+        "approval pending", "waiting for approval", "submitted for approval"
+    ],
+    "High Escalation Volume": [
+        "urgent", "critical", "asap", "multiple escalations"
+    ],
+    "Email Delivery Failures": [
+        "not received", "email delivery failed", "bounce", "not delivered"
+    ],
+    "Generic System Errors": [
+        "not working", "error occurred", "page not loading", "bug", "issue"
+    ],
+    "Account Access or Configuration": [
+        "login issue", "password reset", "access denied", "disabled", "unauthorized"
+    ],
+    "WhatsApp Channel Issues": [
+        "whatsapp", "green tick", "template rejected", "24 hour session"
+    ],
+    "Order or Billing Problems": [
+        "invoice", "billing", "charged", "amount", "payment"
+    ]
 }
