@@ -57,7 +57,7 @@ if uploaded_files:
 
             df.to_csv(csv_filename, index=False)
 
-            generate_insights(UPLOAD_FOLDER)
+            generate_insights(tickets)
 
             # Save state for persistent downloads
             st.session_state["csv_filename"] = csv_filename
