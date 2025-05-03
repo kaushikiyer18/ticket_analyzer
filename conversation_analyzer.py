@@ -1,59 +1,67 @@
+import os
 import re
-from trend_categories import TREND_CATEGORIES
-from collections import defaultdict
-from pathlib import Path
 import pandas as pd
+from trend_categories import TREND_CATEGORIES
+from datetime import datetime
 
-def generate_insights(tickets, output_prefix="insights_report"):
-    categorized = defaultdict(list)
-    unmatched = []
+def generate_insights(xml_folder):
+    categorized = {}
+    uncategorized = []
 
-    for ticket in tickets:
-        match_found = False
+    all_tickets = []
+
+    # Collect all parsed data
+    for filename in os.listdir(xml_folder):
+        if filename.endswith(".xml"):
+            df = pd.read_csv("ticket_analysis_output_" + datetime.now().strftime("%Y%m%d") + ".csv")
+            all_tickets.extend(df.to_dict("records"))
+            break  # Only load once (for now)
+
+    for ticket in all_tickets:
+        matched = False
+        combined_text = ticket.get("combined_text", "")
+
         for category, patterns in TREND_CATEGORIES.items():
-            if any(re.search(pat, ticket["combined_text"], re.IGNORECASE) for pat in patterns):
-                categorized[category].append(ticket)
-                match_found = True
+            if isinstance(patterns, list) and any(re.search(pat, combined_text, re.IGNORECASE) for pat in patterns):
+                categorized.setdefault(category, []).append(ticket)
+                matched = True
                 break
-        if not match_found:
-            unmatched.append(ticket)
 
-    # Generate Insights Report
-    today = pd.Timestamp.today().strftime("%Y%m%d")
-    insights_path = f"{output_prefix}_{today}.txt"
-    with open(insights_path, "w") as f:
+        if not matched:
+            uncategorized.append(ticket)
+
+    # Save insights report
+    report_filename = f"insights_report_{datetime.now().strftime('%Y%m%d')}.txt"
+    with open(report_filename, "w") as f:
         f.write("Customer Support Trends Report\n")
         f.write("=" * 40 + "\n\n")
-        f.write(f"Generated on: {today}\n\n")
+        f.write(f"Generated on: {datetime.now().strftime('%Y%m%d')}\n\n")
         f.write("Top Problem Categories:\n")
-        f.write("-" * 30 + "\n")
+        f.write("-" * 30 + "\n\n")
 
-        for category, items in categorized.items():
-            f.write(f"\n➡️ {category} ({len(items)} occurrences)\n")
-            for item in items[:3]:  # Top 3 examples per category
-                example = item["combined_text"].strip().replace("\n", " ")[:250]
-                f.write(f"• {example}...\n")
+        for category, tickets in categorized.items():
+            f.write(f"🔹 {category} ({len(tickets)} occurrences)\n\n")
 
     # Save unmatched samples
-    unmatched_path = "unmatched_samples.txt"
-    if unmatched:
-        with open(unmatched_path, "w") as f:
-            for item in unmatched:
-                f.write(item["combined_text"].strip().replace("\n", " ") + "\n")
+    unmatched_filename = "unmatched_samples.txt"
+    with open(unmatched_filename, "w") as f:
+        for ticket in uncategorized:
+            f.write(f"[{ticket.get('ticket_id', 'N/A')}] {ticket.get('combined_text', '')}\n\n")
 
-    # Categorized ticket map
-    map_rows = []
-    for category, items in categorized.items():
-        for item in items:
-            map_rows.append({
+    # Save CSV with Category Mapping
+    map_filename = f"categorized_ticket_map_{datetime.now().strftime('%Y%m%d')}.csv"
+    rows = []
+
+    for category, tickets in categorized.items():
+        for ticket in tickets:
+            rows.append({
                 "Category": category,
-                "Ticket ID": item.get("ticket_id", "N/A"),
-                "Subject": item.get("subject", "N/A"),
-                "Created At": item.get("created_at", "N/A"),
-                "Priority": item.get("priority", "N/A"),
-                "Type": category
+                "Ticket ID": ticket.get("ticket_id", "N/A"),
+                "Subject": ticket.get("subject", "N/A"),
+                "Created At": ticket.get("created_at", "N/A"),
+                "Priority": ticket.get("priority", "N/A"),
+                "Type": ticket.get("type", "N/A"),
             })
-    map_df = pd.DataFrame(map_rows)
-    map_df.to_csv(f"categorized_ticket_map_{today}.csv", index=False)
 
-    print("✅ Insight report and categorized ticket map generated successfully.")
+    df_map = pd.DataFrame(rows)
+    df_map.to_csv(map_filename, index=False)
