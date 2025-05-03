@@ -1,4 +1,3 @@
-import os
 import xml.etree.ElementTree as ET
 
 def parse_ticket_xml(file_path):
@@ -10,25 +9,19 @@ def parse_ticket_xml(file_path):
         for ticket in root.findall(".//helpdesk-ticket"):
             ticket_data = {}
 
-            # Ticket ID
-            ticket_id_elem = ticket.find("id")
-            ticket_data["ticket_id"] = ticket_id_elem.text if ticket_id_elem is not None else None
-
-            # Only extract the customer complaint from <description>
-            desc_elem = ticket.find("description")
-            ticket_data["description"] = desc_elem.text.strip() if desc_elem is not None else ""
-
-            # Optional: include subject for additional signal
-            subject_elem = ticket.find("subject")
-            ticket_data["subject"] = subject_elem.text.strip() if subject_elem is not None else ""
+            # Extract relevant fields
+            ticket_data["display_id"] = ticket.findtext("display-id", default="").strip()
+            ticket_data["subject"] = ticket.findtext("subject", default="").strip()
+            ticket_data["created_at"] = ticket.findtext("created-at", default="").strip()
+            ticket_data["priority"] = ticket.findtext("priority", default="").strip()
+            ticket_data["ticket_type"] = ticket.findtext("ticket-type", default="").strip()
+            ticket_data["description"] = ticket.findtext("description", default="").strip()
 
             # Combine for analysis
-            combined_text = f"{ticket_data['subject']} {ticket_data['description']}".strip()
-            ticket_data["combined_text"] = combined_text
+            ticket_data["combined_text"] = f"{ticket_data['subject']} {ticket_data['description']}".strip()
 
             tickets.append(ticket_data)
 
     except Exception as e:
         print(f"❌ Failed to parse {file_path}: {e}")
-
     return tickets
