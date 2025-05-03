@@ -1,96 +1,73 @@
 import streamlit as st
 import pandas as pd
 import os
-import datetime
 import zipfile
+import datetime
 from pathlib import Path
-
 from parser import parse_ticket_xml
 from analyzer import analyze_tickets
 from conversation_analyzer import generate_insights
 
 st.set_page_config(page_title="Customer Support Ticket Analyzer", page_icon="🎟️", layout="wide")
-
 st.title("🎟️ Customer Support Ticket Analyzer")
-st.subheader("Analyze Freshdesk ticket exports and uncover trends easily 🚀")
+st.caption("Analyze Freshdesk XML ticket exports and uncover trends easily 🚀")
 st.markdown("---")
 
 UPLOAD_FOLDER = "uploaded_xmls"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Upload files
-uploaded_files = st.file_uploader("Upload XML files (you can upload a ZIP of multiple XMLs)", type=["xml", "zip"], accept_multiple_files=True)
-
-def save_uploaded_file(uploaded_file):
-    filepath = os.path.join(UPLOAD_FOLDER, uploaded_file.name)
-    with open(filepath, "wb") as f:
+def save_file(uploaded_file):
+    file_path = os.path.join(UPLOAD_FOLDER, uploaded_file.name)
+    with open(file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
-    return filepath
+    return file_path
 
-def extract_zip_if_needed(file_path):
-    if zipfile.is_zipfile(file_path):
-        with zipfile.ZipFile(file_path, 'r') as zip_ref:
-            zip_ref.extractall(UPLOAD_FOLDER)
+st.subheader("📂 Upload XML Files (you can upload a ZIP of multiple XMLs)")
+uploaded_files = st.file_uploader("Drag and drop files here", type=["xml", "zip"], accept_multiple_files=True)
 
-# Button to trigger analysis
+valid_files = []
 if uploaded_files:
     for uploaded_file in uploaded_files:
-        path = save_uploaded_file(uploaded_file)
-        extract_zip_if_needed(path)
+        path = save_file(uploaded_file)
+        if uploaded_file.name.endswith(".zip"):
+            with zipfile.ZipFile(path, "r") as zip_ref:
+                zip_ref.extractall(UPLOAD_FOLDER)
+        else:
+            valid_files.append(path)
 
-    if st.button("🚀 Analyze Tickets"):
-        tickets = []
-        for file in os.listdir(UPLOAD_FOLDER):
-            if file.endswith(".xml"):
-                full_path = os.path.join(UPLOAD_FOLDER, file)
-                tickets.extend(parse_ticket_xml(full_path))
+analyze_btn = st.button("🚀 Analyze Tickets")
 
-        if tickets:
-            df = pd.DataFrame(tickets)
+if analyze_btn and uploaded_files:
+    all_tickets = []
+    for file in os.listdir(UPLOAD_FOLDER):
+        if file.endswith(".xml"):
+            full_path = os.path.join(UPLOAD_FOLDER, file)
+            all_tickets.extend(parse_ticket_xml(full_path))
 
-            today = datetime.datetime.now().strftime("%Y%m%d")
-            csv_filename = f"ticket_analysis_output_{today}.csv"
-            insights_filename = f"insights_report_{today}.txt"
-            unmatched_filename = f"unmatched_samples_{today}.txt"
-            categorized_map_file = f"categorized_ticket_map_{today}.csv"
+    if all_tickets:
+        df = pd.DataFrame(all_tickets)
+        today = datetime.datetime.now().strftime("%Y%m%d")
+        csv_file = f"ticket_analysis_output_{today}.csv"
+        df.to_csv(csv_file, index=False)
 
-            df.to_csv(csv_filename, index=False)
+        generate_insights(UPLOAD_FOLDER)
 
-            generate_insights(tickets)
+        st.markdown("## 📥 Download Results")
+        st.download_button("Download Ticket Data (CSV)", data=open(csv_file, "rb").read(), file_name=csv_file, mime="text/csv")
 
-            # Save state for persistent downloads
-            st.session_state["csv_filename"] = csv_filename
-            st.session_state["insights_filename"] = insights_filename
-            st.session_state["unmatched_filename"] = unmatched_filename
-            st.session_state["categorized_map_file"] = categorized_map_file
+        insights_path = f"insights_report_{today}.txt"
+        if Path(insights_path).exists():
+            st.download_button("Download Insights Report (TXT)", data=open(insights_path, "rb").read(), file_name=insights_path, mime="text/plain")
 
-            st.success("✅ Analysis completed successfully!")
-            st.subheader("📄 Sample Ticket Data")
-            st.dataframe(df.head(10))
+        cat_map = f"categorized_ticket_map_{today}.csv"
+        if Path(cat_map).exists():
+            st.download_button("Download Categorized Tickets (CSV)", data=open(cat_map, "rb").read(), file_name=cat_map, mime="text/csv")
 
-            st.subheader("📈 Quick Metrics")
-            st.metric(label="Total Tickets", value=len(df))
-            st.metric(label="Date", value=today)
+        unmatched_file = f"unmatched_samples_{today}.txt"
+        if Path(unmatched_file).exists():
+            st.download_button("Download Uncategorized Samples (TXT)", data=open(unmatched_file, "rb").read(), file_name=unmatched_file, mime="text/plain")
 
-# Show download buttons if session state is present
-if "csv_filename" in st.session_state:
-    st.subheader("📥 Download Results")
-
-    if Path(st.session_state["csv_filename"]).exists():
-        with open(st.session_state["csv_filename"], "rb") as f:
-            st.download_button("Download Ticket Data (CSV)", f, file_name=st.session_state["csv_filename"], mime="text/csv")
-
-    if Path(st.session_state["insights_filename"]).exists():
-        with open(st.session_state["insights_filename"], "rb") as f:
-            st.download_button("Download Insights Report (TXT)", f, file_name=st.session_state["insights_filename"], mime="text/plain")
-
-    if Path(st.session_state["unmatched_filename"]).exists():
-        with open(st.session_state["unmatched_filename"], "rb") as f:
-            st.download_button("Download Uncategorized Samples (TXT)", f, file_name=st.session_state["unmatched_filename"], mime="text/plain")
-
-    if Path(st.session_state["categorized_map_file"]).exists():
-        with open(st.session_state["categorized_map_file"], "rb") as f:
-            st.download_button("Download Categorized Tickets (CSV)", f, file_name=st.session_state["categorized_map_file"], mime="text/csv")
-
-    st.caption("Reports are generated based on uploaded Freshdesk XML ticket exports.")
+        st.caption("Reports are generated based on uploaded Freshdesk XML ticket exports.")
+    else:
+        st.error("❌ No valid tickets found. Please check your XML files.")
