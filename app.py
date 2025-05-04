@@ -59,61 +59,59 @@ if uploaded_files:
         else:
             valid_files.append(path)
 
-# --- ANALYZE BUTTON ---
-if st.button("🚀 Analyze Tickets") and uploaded_files:
-    with st.spinner("Analyzing tickets... Please wait."):
-        all_tickets = []
-        for file in os.listdir(UPLOAD_FOLDER):
-            if file.endswith(".xml"):
-                full_path = os.path.join(UPLOAD_FOLDER, file)
-                all_tickets.extend(parse_ticket_xml(full_path))
+    # Parse files to extract group options
+    all_tickets = []
+    for file in os.listdir(UPLOAD_FOLDER):
+        if file.endswith(".xml"):
+            full_path = os.path.join(UPLOAD_FOLDER, file)
+            all_tickets.extend(parse_ticket_xml(full_path))
 
-        if all_tickets:
-            df = pd.DataFrame(all_tickets)
+    if all_tickets:
+        df = pd.DataFrame(all_tickets)
+        df['group_id'] = df['group_id'].astype(str)
+        group_ids = df['group_id'].dropna().unique().tolist()
+        group_options = {gid: GROUP_ID_NAME_MAPPING.get(gid, f"Unknown ({gid})") for gid in group_ids}
+        group_display_names = ["All Groups"] + list(group_options.values())
+        selected_group_names = st.multiselect("🎯 Select Freshdesk Group(s)", group_display_names, default=["All Groups"])
 
-            df['group_id'] = df['group_id'].astype(str)
-            group_ids = df['group_id'].dropna().unique().tolist()
-            group_options = {gid: GROUP_ID_NAME_MAPPING.get(gid, f"Unknown ({gid})") for gid in group_ids}
+        if st.button("🚀 Analyze Tickets"):
+            with st.spinner("Analyzing tickets... Please wait."):
+                if "All Groups" not in selected_group_names:
+                    selected_group_ids = [gid for gid, name in group_options.items() if name in selected_group_names]
+                    df = df[df['group_id'].isin(selected_group_ids)]
 
-            group_display_names = ["All Groups"] + list(group_options.values())
-            selected_group_name = st.selectbox("🎯 Select Freshdesk Group", group_display_names)
+                today = datetime.datetime.now().strftime("%Y%m%d")
+                csv_file = f"ticket_analysis_output_{today}.csv"
+                df.to_csv(csv_file, index=False)
 
-            if selected_group_name != "All Groups":
-                selected_group_id = [gid for gid, name in group_options.items() if name == selected_group_name][0]
-                df = df[df['group_id'] == selected_group_id]
+                generate_insights(UPLOAD_FOLDER)
 
-            today = datetime.datetime.now().strftime("%Y%m%d")
-            csv_file = f"ticket_analysis_output_{today}.csv"
-            df.to_csv(csv_file, index=False)
+                st.success("✅ Analysis complete! Download your results below.")
+                st.markdown("## 📥 Download Results")
 
-            generate_insights(UPLOAD_FOLDER)
+                with st.expander("📄 Ticket Data CSV"):
+                    st.dataframe(df)
+                    st.download_button("⬇️ Download Ticket Data", data=open(csv_file, "rb").read(), file_name=csv_file, mime="text/csv")
 
-            st.success("✅ Analysis complete! Download your results below.")
-            st.markdown("## 📥 Download Results")
+                insights_path = f"insights_report_{today}.txt"
+                if Path(insights_path).exists():
+                    with st.expander("🧠 Insights Report"):
+                        st.text(open(insights_path).read())
+                        st.download_button("⬇️ Download Insights Report", data=open(insights_path, "rb").read(), file_name=insights_path, mime="text/plain")
 
-            with st.expander("📄 Ticket Data CSV"):
-                st.dataframe(df)
-                st.download_button("⬇️ Download Ticket Data", data=open(csv_file, "rb").read(), file_name=csv_file, mime="text/csv")
+                cat_map = f"categorized_ticket_map_{today}.csv"
+                if Path(cat_map).exists():
+                    cat_df = pd.read_csv(cat_map)
+                    with st.expander("📊 Categorized Ticket Map"):
+                        st.dataframe(cat_df)
+                        st.download_button("⬇️ Download Categorized Map", data=open(cat_map, "rb").read(), file_name=cat_map, mime="text/csv")
 
-            insights_path = f"insights_report_{today}.txt"
-            if Path(insights_path).exists():
-                with st.expander("🧠 Insights Report"):
-                    st.text(open(insights_path).read())
-                    st.download_button("⬇️ Download Insights Report", data=open(insights_path, "rb").read(), file_name=insights_path, mime="text/plain")
+                unmatched_file = f"unmatched_samples_{today}.txt"
+                if Path(unmatched_file).exists():
+                    with st.expander("❓ Unmatched Issues"):
+                        st.text(open(unmatched_file).read())
+                        st.download_button("⬇️ Download Unmatched Samples", data=open(unmatched_file, "rb").read(), file_name=unmatched_file, mime="text/plain")
 
-            cat_map = f"categorized_ticket_map_{today}.csv"
-            if Path(cat_map).exists():
-                cat_df = pd.read_csv(cat_map)
-                with st.expander("📊 Categorized Ticket Map"):
-                    st.dataframe(cat_df)
-                    st.download_button("⬇️ Download Categorized Map", data=open(cat_map, "rb").read(), file_name=cat_map, mime="text/csv")
-
-            unmatched_file = f"unmatched_samples_{today}.txt"
-            if Path(unmatched_file).exists():
-                with st.expander("❓ Unmatched Issues"):
-                    st.text(open(unmatched_file).read())
-                    st.download_button("⬇️ Download Unmatched Samples", data=open(unmatched_file, "rb").read(), file_name=unmatched_file, mime="text/plain")
-
-            st.caption("Reports are generated based on uploaded Freshdesk XML ticket exports.")
-        else:
-            st.error("❌ No valid tickets found. Please check your XML files.")
+                st.caption("Reports are generated based on uploaded Freshdesk XML ticket exports.")
+    else:
+        st.warning("No valid tickets found in the uploaded files.")
