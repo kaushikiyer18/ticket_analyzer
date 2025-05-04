@@ -1,9 +1,13 @@
 
 import os
-import re
 import datetime
 import pandas as pd
+import xml.etree.ElementTree as ET
 from trend_categories import TREND_KEYWORDS
+
+def score_keywords(text, keywords):
+    text_lower = text.lower()
+    return sum(1 for word in keywords if word.lower() in text_lower)
 
 def generate_insights(folder_path):
     today = datetime.datetime.now().strftime("%Y%m%d")
@@ -15,51 +19,43 @@ def generate_insights(folder_path):
     unmatched = []
     map_rows = []
 
-    def score_keywords(text, keywords):
-        text_lower = text.lower()
-        return sum(1 for word in keywords if word.lower() in text_lower)
-
     for file in os.listdir(folder_path):
         if file.endswith(".xml"):
-            with open(os.path.join(folder_path, file), "r", encoding="utf-8") as f:
-                content = f.read()
+            xml_path = os.path.join(folder_path, file)
+            try:
+                tree = ET.parse(xml_path)
+                root = tree.getroot()
+                for ticket in root.findall(".//helpdesk-ticket"):
+                    tid = ticket.findtext("display-id", default="N/A").strip()
+                    created = ticket.findtext("created-at", default="N/A").strip()
+                    priority = ticket.findtext("priority", default="N/A").strip()
+                    subject = ticket.findtext("subject", default="").strip()
+                    description = ticket.findtext("description", default="").strip()
 
-            tickets = re.findall(r"<helpdesk-ticket>(.*?)</helpdesk-ticket>", content, re.DOTALL)
-            for ticket in tickets:
-                desc_match = re.search(r"<description>(.*?)</description>", ticket, re.DOTALL)
-                subj_match = re.search(r"<subject>(.*?)</subject>", ticket, re.DOTALL)
-                id_match = re.search(r"<display-id>(.*?)</display-id>", ticket)
-                created_match = re.search(r"<created-at>(.*?)</created-at>", ticket)
-                priority_match = re.search(r"<priority>(.*?)</priority>", ticket)
+                    combined = f"{subject} {description}".strip().lower()
+                    best_match = None
+                    best_score = 0
 
-                desc = desc_match.group(1).strip() if desc_match else ""
-                subj = subj_match.group(1).strip() if subj_match else ""
-                tid = id_match.group(1).strip() if id_match else "N/A"
-                created = created_match.group(1).strip() if created_match else "N/A"
-                priority = priority_match.group(1).strip() if priority_match else "N/A"
+                    for category, keywords in TREND_KEYWORDS.items():
+                        score = score_keywords(combined, keywords)
+                        if score >= 3 and score > best_score:
+                            best_match = category
+                            best_score = score
 
-                combined = f"{subj} {desc}".strip().lower()
-                best_match = None
-                best_score = 0
-
-                for category, keywords in TREND_KEYWORDS.items():
-                    score = score_keywords(combined, keywords)
-                    if score >= 3 and score > best_score:
-                        best_match = category
-                        best_score = score
-
-                if best_match:
-                    trend_map.setdefault(best_match, []).append(combined)
-                    map_rows.append({
-                        "Category": best_match,
-                        "Ticket ID": tid,
-                        "Subject": subj,
-                        "Created At": created,
-                        "Priority": priority,
-                        "Type": best_match
-                    })
-                else:
-                    unmatched.append(combined)
+                    if best_match:
+                        trend_map.setdefault(best_match, []).append(combined)
+                        map_rows.append({
+                            "Category": best_match,
+                            "Ticket ID": tid,
+                            "Subject": subject,
+                            "Created At": created,
+                            "Priority": priority,
+                            "Type": best_match
+                        })
+                    else:
+                        unmatched.append(combined)
+            except Exception as e:
+                print(f"Failed to parse {xml_path}: {e}")
 
     with open(output_file, "w") as f:
         f.write("Customer Support Trends Report\n")
