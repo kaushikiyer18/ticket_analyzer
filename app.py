@@ -23,9 +23,6 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 GROUP_ID_NAME_MAPPING = {
-    "17000127748": "Helpdesk T100",
-    "17000119961": "Helpdesk team",
-    "17000126258": "US team",
     "17000123004": "Bandwidth Team",
     "17000127820": "CPaaS Team",
     "17000127015": "DE US Team",
@@ -34,7 +31,10 @@ GROUP_ID_NAME_MAPPING = {
     "17000126035": "Sysadmins",
     "17000128001": "Web Integration",
     "17000120858": "DE Team",
-    "17000127117": "App Integration"
+    "17000127117": "App Integration",
+    "17000127748": "Helpdesk T100",
+    "17000119961": "Helpdesk team",
+    "17000126258": "US team"
 }
 
 def save_file(uploaded_file):
@@ -71,18 +71,16 @@ if st.button("🚀 Analyze Tickets") and uploaded_files:
         if all_tickets:
             df = pd.DataFrame(all_tickets)
 
-            # Filter by group
             df['group_id'] = df['group_id'].astype(str)
             group_ids = df['group_id'].dropna().unique().tolist()
             group_options = {gid: GROUP_ID_NAME_MAPPING.get(gid, f"Unknown ({gid})") for gid in group_ids}
 
-            group_options_display = ["All Groups"] + list(group_options.values())
-selected_group_name = st.selectbox("🎯 Select Freshdesk Group", group_options_display)
-if selected_group_name != "All Groups":
-    selected_group_id = [gid for gid, name in group_options.items() if name == selected_group_name][0]
-    df = df[df['group_id'] == selected_group_id]
-            selected_group_id = [gid for gid, name in group_options.items() if name == selected_group_name][0]
-            df = df[df['group_id'] == selected_group_id]
+            group_display_names = ["All Groups"] + list(group_options.values())
+            selected_group_name = st.selectbox("🎯 Select Freshdesk Group", group_display_names)
+
+            if selected_group_name != "All Groups":
+                selected_group_id = [gid for gid, name in group_options.items() if name == selected_group_name][0]
+                df = df[df['group_id'] == selected_group_id]
 
             today = datetime.datetime.now().strftime("%Y%m%d")
             csv_file = f"ticket_analysis_output_{today}.csv"
