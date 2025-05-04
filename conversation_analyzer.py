@@ -1,8 +1,9 @@
+
 import os
 import re
 import datetime
 import pandas as pd
-from trend_categories import TREND_PATTERNS
+from trend_categories import TREND_KEYWORDS
 
 def generate_insights(folder_path):
     today = datetime.datetime.now().strftime("%Y%m%d")
@@ -13,6 +14,10 @@ def generate_insights(folder_path):
     trend_map = {}
     unmatched = []
     map_rows = []
+
+    def score_keywords(text, keywords):
+        text_lower = text.lower()
+        return sum(1 for word in keywords if word.lower() in text_lower)
 
     for file in os.listdir(folder_path):
         if file.endswith(".xml"):
@@ -33,22 +38,27 @@ def generate_insights(folder_path):
                 created = created_match.group(1).strip() if created_match else "N/A"
                 priority = priority_match.group(1).strip() if priority_match else "N/A"
 
-                combined = f"{subj} {desc}".strip()
-                matched = False
-                for category, patterns in TREND_PATTERNS.items():
-                    if any(re.search(p, combined, re.IGNORECASE) for p in patterns):
-                        trend_map.setdefault(category, []).append(combined)
-                        map_rows.append({
-                            "Category": category,
-                            "Ticket ID": tid,
-                            "Subject": subj,
-                            "Created At": created,
-                            "Priority": priority,
-                            "Type": category
-                        })
-                        matched = True
-                        break
-                if not matched:
+                combined = f"{subj} {desc}".strip().lower()
+                best_match = None
+                best_score = 0
+
+                for category, keywords in TREND_KEYWORDS.items():
+                    score = score_keywords(combined, keywords)
+                    if score >= 3 and score > best_score:
+                        best_match = category
+                        best_score = score
+
+                if best_match:
+                    trend_map.setdefault(best_match, []).append(combined)
+                    map_rows.append({
+                        "Category": best_match,
+                        "Ticket ID": tid,
+                        "Subject": subj,
+                        "Created At": created,
+                        "Priority": priority,
+                        "Type": best_match
+                    })
+                else:
                     unmatched.append(combined)
 
     with open(output_file, "w") as f:
@@ -57,7 +67,7 @@ def generate_insights(folder_path):
         f.write(f"Generated on: {today}\n\n")
         f.write("Top Problem Categories:\n")
         f.write("-"*30 + "\n\n")
-        for category, samples in trend_map.items():
+        for category, samples in sorted(trend_map.items(), key=lambda x: len(x[1]), reverse=True):
             f.write(f"🔹 {category} ({len(samples)} occurrences)\n\n")
 
     if unmatched:
