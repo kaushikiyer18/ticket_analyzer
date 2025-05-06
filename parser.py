@@ -14,7 +14,8 @@ def parse_ticket_xml(file_path):
             t_data["created_at"] = ticket.findtext("created-at", default="N/A").strip()
             t_data["priority"] = ticket.findtext("priority", default="N/A").strip()
             t_data["description"] = ticket.findtext("description", default="").strip()
-            t_data["tiket-type"] = ticket.findtext("ticket-type", default="Unknown").strip()
+            t_data["ticket-type"] = ticket.findtext("ticket-type", default="Unknown").strip()
+            t_data["current_issue_type"] = ticket.findtext("cf_issue_type_430969", default="N/A").strip()
 
             group_id = ticket.findtext("group-id", default="").strip()
             if not group_id:
