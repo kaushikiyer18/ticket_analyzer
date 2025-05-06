@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import os
@@ -8,21 +7,16 @@ from pathlib import Path
 from parser import parse_ticket_xml
 from analyzer import analyze_tickets
 from conversation_analyzer import generate_insights
+import xml.etree.ElementTree as ET
 
 st.set_page_config(page_title="Customer Support Ticket Analyzer", page_icon="🎟️", layout="wide")
-
-# --- HEADER ---
-st.markdown("""
-# 🎫 <span style='color:#FF4B4B;'>Customer Support Ticket Analyzer</span>
-<small>Analyze Freshdesk XML ticket exports and uncover trends easily 🚀</small>
-""", unsafe_allow_html=True)
+st.title("🎟️ Customer Support Ticket Analyzer")
+st.caption("Analyze Freshdesk XML ticket exports and uncover trends easily 🚀")
 st.markdown("---")
 
 UPLOAD_FOLDER = "uploaded_xmls"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
-GROUP_ID_NAME_MAPPING = {'17000127117': 'App Integration', '17000123004': 'Bandwidth Team', '17000130793': 'BFDL', '17000110678': 'Campaign Team', '17000127820': 'CPAAS Team', '17000120858': 'DE Team', '17000127015': 'DE US Team', '17000124233': 'Dev Ops', '17000128583': 'Europe DE', '17000127748': 'Helpdesk T100', '17000119961': 'Helpdesk team', '17000127195': 'IS-Sysadmin', '17000121073': 'MIS Team (Internal Request)', '17000123941': 'NDNC Group', '17000126034': 'Office Infra', '17000118813': 'Onboarding Team', '17000126857': 'Pepipost Delivery', '17000126858': 'Pepipost Devops', '17000126859': 'Pepipost Enterprise', '17000126860': 'Pepipost Online', '17000126861': 'Pepipost US', '17000124388': 'Publisher Team', '17000127259': 'Regulatory Team', '17000128058': 'Research Team', '17000127451': 'Sysadmin-Task', '17000126035': 'Sysadmins', '17000123052': 'Tender Group', '17000126258': 'US Team', '17000128001': 'Web Integration', '17000128876': 'WhatsApp', '17000130127': 'IS Team'}
 
 def save_file(uploaded_file):
     file_path = os.path.join(UPLOAD_FOLDER, uploaded_file.name)
@@ -30,11 +24,9 @@ def save_file(uploaded_file):
         f.write(uploaded_file.getbuffer())
     return file_path
 
-# --- UPLOAD SECTION ---
-with st.container():
-    st.markdown("### 📂 Upload XML Files")
-    st.caption("You can upload XML or a ZIP of multiple XMLs (Max 200MB)")
-    uploaded_files = st.file_uploader("Drag and drop files here", type=["xml", "zip"], accept_multiple_files=True, label_visibility="collapsed")
+# Upload XML or ZIP files
+st.subheader("📂 Upload XML Files (you can upload a ZIP of multiple XMLs)")
+uploaded_files = st.file_uploader("Drag and drop files here", type=["xml", "zip"], accept_multiple_files=True)
 
 valid_files = []
 if uploaded_files:
@@ -46,59 +38,101 @@ if uploaded_files:
         else:
             valid_files.append(path)
 
-    # Parse files to extract group options
+# Extract group IDs and ticket types before analysis
+group_ids = set()
+ticket_types = set()
+for file in os.listdir(UPLOAD_FOLDER):
+    if file.endswith(".xml"):
+        tree = ET.parse(os.path.join(UPLOAD_FOLDER, file))
+        root = tree.getroot()
+        for ticket in root.findall(".//helpdesk-ticket"):
+            group_id = ticket.findtext("group-id", default="unassigned").strip()
+            group_ids.add(group_id)
+            ttype = ticket.findtext("ticket-type", default="Other").strip()
+            ticket_types.add(ttype)
+
+# Replace with your actual group mapping
+GROUP_MAPPING = {
+    "17000127117": "App Integration",
+    "17000123004": "Bandwidth Team",
+    "17000130793": "BFDL",
+    "17000110678": "Campaign Team",
+    "17000127820": "CPAAS Team",
+    "17000120858": "DE Team",
+    "17000127015": "DE US Team",
+    "17000124233": "Dev Ops",
+    "17000128583": "Europe DE",
+    "17000127748": "Helpdesk T100",
+    "17000119961": "Helpdesk team",
+    "17000130127": "IS Team",
+    "17000127195": "IS-Sysadmin",
+    "17000121073": "MIS Team (Internal Request)",
+    "17000123941": "NDNC Group",
+    "17000126034": "Office Infra",
+    "17000118813": "Onboarding Team",
+    "17000126857": "Pepipost Delivery",
+    "17000126858": "Pepipost Devops",
+    "17000126859": "Pepipost Enterprise",
+    "17000126860": "Pepipost Online",
+    "17000126861": "Pepipost US",
+    "17000124388": "Publisher Team",
+    "17000127259": "Regulatory Team",
+    "17000128058": "Research Team",
+    "17000127451": "Sysadmin-Task",
+    "17000126035": "Sysadmins",
+    "17000123052": "Tender Group",
+    "17000126258": "US Team",
+    "17000128001": "Web Integration",
+    "17000128876": "WhatsApp",
+    "All": "All Groups"
+}
+
+group_ids = list(group_ids)
+group_names = [GROUP_MAPPING.get(gid, f"Unknown ({gid})") for gid in group_ids]
+group_selection = st.multiselect("👥 Select Freshdesk Groups to Analyze", options=group_names)
+ticket_type_selection = st.multiselect("🎯 Select Ticket Types to Include", options=list(ticket_types))
+
+analyze_btn = st.button("🚀 Analyze Tickets")
+
+if analyze_btn and uploaded_files:
+    selected_ids = [gid for gid, name in GROUP_MAPPING.items() if name in group_selection]
+    selected_types = set(ticket_type_selection)
+
     all_tickets = []
     for file in os.listdir(UPLOAD_FOLDER):
         if file.endswith(".xml"):
             full_path = os.path.join(UPLOAD_FOLDER, file)
             all_tickets.extend(parse_ticket_xml(full_path))
 
-    if all_tickets:
-        df = pd.DataFrame(all_tickets)
-        df['group_id'] = df['group_id'].astype(str)
-        group_ids = df['group_id'].dropna().unique().tolist()
-        group_options = {gid: GROUP_ID_NAME_MAPPING.get(gid, f"Unknown ({gid})") for gid in group_ids}
-        group_display_names = ["All Groups"] + list(group_options.values())
-        selected_group_names = st.multiselect("🎯 Select Freshdesk Group(s)", group_display_names, default=["All Groups"])
+    # Apply group & type filters
+    filtered_tickets = []
+    for ticket in all_tickets:
+        if (ticket["group_id"] in selected_ids or "All" in group_selection) and ticket["type"] in selected_types:
+            filtered_tickets.append(ticket)
 
-        if st.button("🚀 Analyze Tickets"):
-            with st.spinner("Analyzing tickets... Please wait."):
-                if "All Groups" not in selected_group_names:
-                    selected_group_ids = [gid for gid, name in group_options.items() if name in selected_group_names]
-                    df = df[df['group_id'].isin(selected_group_ids)]
+    if filtered_tickets:
+        df = pd.DataFrame(filtered_tickets)
+        today = datetime.datetime.now().strftime("%Y%m%d")
+        csv_file = f"ticket_analysis_output_{today}.csv"
+        df.to_csv(csv_file, index=False)
 
-                today = datetime.datetime.now().strftime("%Y%m%d")
-                csv_file = f"ticket_analysis_output_{today}.csv"
-                df.to_csv(csv_file, index=False)
+        generate_insights(UPLOAD_FOLDER)
 
-                generate_insights(UPLOAD_FOLDER)
+        st.markdown("## 📥 Download Results")
+        st.download_button("Download Ticket Data (CSV)", data=open(csv_file, "rb").read(), file_name=csv_file, mime="text/csv")
 
-                st.success("✅ Analysis complete! Download your results below.")
-                st.markdown("## 📥 Download Results")
+        insights_path = f"insights_report_{today}.txt"
+        if Path(insights_path).exists():
+            st.download_button("Download Insights Report (TXT)", data=open(insights_path, "rb").read(), file_name=insights_path, mime="text/plain")
 
-                with st.expander("📄 Ticket Data CSV"):
-                    st.dataframe(df)
-                    st.download_button("⬇️ Download Ticket Data", data=open(csv_file, "rb").read(), file_name=csv_file, mime="text/csv")
+        cat_map = f"categorized_ticket_map_{today}.csv"
+        if Path(cat_map).exists():
+            st.download_button("Download Categorized Tickets (CSV)", data=open(cat_map, "rb").read(), file_name=cat_map, mime="text/csv")
 
-                insights_path = f"insights_report_{today}.txt"
-                if Path(insights_path).exists():
-                    with st.expander("🧠 Insights Report"):
-                        st.text(open(insights_path).read())
-                        st.download_button("⬇️ Download Insights Report", data=open(insights_path, "rb").read(), file_name=insights_path, mime="text/plain")
+        unmatched_file = f"unmatched_samples_{today}.txt"
+        if Path(unmatched_file).exists():
+            st.download_button("Download Uncategorized Samples (TXT)", data=open(unmatched_file, "rb").read(), file_name=unmatched_file, mime="text/plain")
 
-                cat_map = f"categorized_ticket_map_{today}.csv"
-                if Path(cat_map).exists():
-                    cat_df = pd.read_csv(cat_map)
-                    with st.expander("📊 Categorized Ticket Map"):
-                        st.dataframe(cat_df)
-                        st.download_button("⬇️ Download Categorized Map", data=open(cat_map, "rb").read(), file_name=cat_map, mime="text/csv")
-
-                unmatched_file = f"unmatched_samples_{today}.txt"
-                if Path(unmatched_file).exists():
-                    with st.expander("❓ Unmatched Issues"):
-                        st.text(open(unmatched_file).read())
-                        st.download_button("⬇️ Download Unmatched Samples", data=open(unmatched_file, "rb").read(), file_name=unmatched_file, mime="text/plain")
-
-                st.caption("Reports are generated based on uploaded Freshdesk XML ticket exports.")
+        st.caption("Reports are generated based on uploaded Freshdesk XML ticket exports.")
     else:
-        st.warning("No valid tickets found in the uploaded files.")
+        st.error("❌ No tickets matched the selected group and type filters.")
