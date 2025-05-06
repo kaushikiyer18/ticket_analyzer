@@ -116,6 +116,11 @@ if analyze_btn and uploaded_files:
 
         st.download_button("📄 Ticket Data CSV", data=open(csv_file, "rb").read(), file_name=csv_file, mime="text/csv")
 
+        # Add download button for enriched ticket analysis CSV
+        # Reuse same enriched ticket CSV path
+        if Path(csv_file).exists():
+        st.download_button("📥 Enriched Ticket CSV (Auto-Tagged)", data=open(csv_file, "rb").read(), file_name=csv_file, mime="text/csv")
+
         insights_path = f"insights_report_{today}.txt"
         if Path(insights_path).exists():
             st.download_button("🧠 Insights Report", data=open(insights_path, "rb").read(), file_name=insights_path, mime="text/plain")
