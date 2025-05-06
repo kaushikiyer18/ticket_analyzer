@@ -1,4 +1,3 @@
-
 import xml.etree.ElementTree as ET
 
 def parse_ticket_xml(file_path):
@@ -19,6 +18,8 @@ def parse_ticket_xml(file_path):
             if not group_id:
                 group_id = "unassigned"
             t_data["group_id"] = group_id
+
+            t_data["type"] = ticket.findtext("ticket-type", default="N/A")  # new field for ticket type
 
             t_data["combined_text"] = f"{t_data['subject']} {t_data['description']}".strip()
             tickets.append(t_data)
