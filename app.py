@@ -121,6 +121,14 @@ if analyze_btn and uploaded_files:
         df = pd.DataFrame(filtered_tickets)
         today = datetime.datetime.now().strftime("%Y%m%d")
         csv_file = f"ticket_analysis_output_{today}.csv"
+        selected_columns = [
+            "ticket_id", "subject", "created_at", "priority", "group_id",
+            "type", "current_issue_type", "issue_type_auto", "ticket_type_auto",
+            "summary_problem", "summary_resolution", "combined_text"
+            ]
+
+        # Keep only columns that exist
+        df = df[[col for col in selected_columns if col in df.columns]]
         df.to_csv(csv_file, index=False)
 
         # Generate insights and enriched file
