@@ -121,27 +121,22 @@ if analyze_btn and uploaded_files:
         df = pd.DataFrame(filtered_tickets)
         today = datetime.datetime.now().strftime("%Y%m%d")
         csv_file = f"ticket_analysis_output_{today}.csv"
+
+        # Order the columns for cleaner CSV
         selected_columns = [
             "ticket_id", "subject", "created_at", "priority", "group_id",
             "type", "current_issue_type", "issue_type_auto", "ticket_type_auto",
             "summary_problem", "summary_resolution", "combined_text"
-            ]
-
-        # Keep only columns that exist
+        ]
         df = df[[col for col in selected_columns if col in df.columns]]
         df.to_csv(csv_file, index=False)
 
-        # Generate insights and enriched file
         generate_insights(UPLOAD_FOLDER)
 
         st.success("✅ Analysis complete! Download your results below.")
         st.markdown("## 📥 Download Results")
 
         st.download_button("📄 Ticket Data CSV", data=open(csv_file, "rb").read(), file_name=csv_file, mime="text/csv")
-
-        enriched_path = f"ticket_analysis_output_{today}.csv"
-        if Path(enriched_path).exists():
-            st.download_button("📩 Enriched Ticket CSV (Auto-Tagged)", data=open(enriched_path, "rb").read(), file_name=enriched_path, mime="text/csv")
 
         insights_path = f"insights_report_{today}.txt"
         if Path(insights_path).exists():
