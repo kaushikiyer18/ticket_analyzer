@@ -67,14 +67,27 @@ uploaded_files = st.file_uploader("Drag and drop files here", type=["xml", "zip"
 group_names = [name for _, name in group_options.items()]
 group_selection = st.multiselect("👥 Select Freshdesk Groups to Analyze", options=["All"] + group_names, default=["All"])
 
-# Select Ticket Types (Example options)
-ticket_type_options = [
+# Determine if only Helpdesk groups are selected
+helpdesk_group_ids = {"17000119961", "17000127748", "17000126258"}
+selected_ids = {gid for gid, name in group_options.items() if name in group_selection}
+only_helpdesk = selected_ids.issubset(helpdesk_group_ids)
+
+# Define different ticket type sets
+cee_types = [
     "CEE - API issue", "CEE - Campaign issue", "CEE - Customer queries",
     "CEE - Database uploading issue", "CEE - Event not reflecting", "CEE - Journey issue",
     "CEE - Non Relevant", "CEE - Reports issue", "CEE - Segment issue", "CEE - SFTP issue",
     "CEE - Spam issues", "CEE - Task", "CEE - Template issue", "CEE - UI Functional issues/bugs",
     "CEE - Webhooks issue"
 ]
+
+general_types = [
+    "Bug", "Query", "Task", "Billing", "Campaign Execution", "Onboarding", "Integration",
+    "WhatsApp Setup", "Webhooks", "Product Feedback", "Dashboard Access", "Training", "Support"
+]
+
+# Show type options based on group
+ticket_type_options = cee_types if only_helpdesk else general_types
 selected_types = st.multiselect("🎯 Select Ticket Types to Include", options=["All"] + ticket_type_options, default=["All"])
 
 valid_files = []
