@@ -1,3 +1,4 @@
+
 import xml.etree.ElementTree as ET
 
 def parse_ticket_xml(file_path):
@@ -13,8 +14,16 @@ def parse_ticket_xml(file_path):
             t_data["created_at"] = ticket.findtext("created-at", default="N/A").strip()
             t_data["priority"] = ticket.findtext("priority", default="N/A").strip()
             t_data["description"] = ticket.findtext("description", default="").strip()
-            t_data["type"] = ticket.findtext("type", default="Unknown").strip()
 
+            # Extract Ticket Type
+            ticket_type = ticket.findtext("type")
+            if ticket_type:
+                t_data["type"] = ticket_type.strip()
+            else:
+                print(f"[DEBUG] No <type> tag found for Ticket ID: {t_data['ticket_id']}")
+                t_data["type"] = "Unknown"
+
+            # Extract group ID
             group_id = ticket.findtext("group-id", default="").strip()
             if not group_id:
                 group_id = "unassigned"
@@ -29,9 +38,8 @@ def parse_ticket_xml(file_path):
                     issue_type = raw_issue.strip()
             t_data["current_issue_type"] = issue_type
 
-            # Combine subject + description for downstream analysis
+            # Combine text for downstream analysis
             t_data["combined_text"] = f"{t_data['subject']} {t_data['description']}".strip()
-
             tickets.append(t_data)
     except Exception as e:
         print(f"❌ Failed to parse {file_path}: {e}")
