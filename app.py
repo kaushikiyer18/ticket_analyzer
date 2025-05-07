@@ -67,29 +67,18 @@ uploaded_files = st.file_uploader("Drag and drop files here", type=["xml", "zip"
 group_names = [name for _, name in group_options.items()]
 group_selection = st.multiselect("👥 Select Freshdesk Groups to Analyze", options=["All"] + group_names, default=["All"])
 
-# Determine if only Helpdesk groups are selected
-helpdesk_group_ids = {"17000119961", "17000127748", "17000126258"}
-selected_ids = {gid for gid, name in group_options.items() if name in group_selection}
-only_helpdesk = selected_ids.issubset(helpdesk_group_ids)
-
-# Define different ticket type sets
-cee_types = [
-    "CEE - API issue", "CEE - Campaign issue", "CEE - Customer queries",
-    "CEE - Database uploading issue", "CEE - Event not reflecting", "CEE - Journey issue",
-    "CEE - Non Relevant", "CEE - Reports issue", "CEE - Segment issue", "CEE - SFTP issue",
-    "CEE - Spam issues", "CEE - Task", "CEE - Template issue", "CEE - UI Functional issues/bugs",
-    "CEE - Webhooks issue"
+# Select Ticket Types (Example options)
+ticket_type_options = [
+    "Campaign Execution", "Integration", "Onboarding", "Product Feedback", "Billing", "Support",
+    "Bug", "Query", "Training", "Automation", "WhatsApp Setup", "Webhooks", "Dashboard Access"
 ]
-
-general_types = [
-    "Bug", "Query", "Task", "Billing", "Campaign Execution", "Onboarding", "Integration",
-    "WhatsApp Setup", "Webhooks", "Product Feedback", "Dashboard Access", "Training", "Support"
-]
-
-# Show type options based on group
-ticket_type_options = cee_types if only_helpdesk else general_types
 selected_types = st.multiselect("🎯 Select Ticket Types to Include", options=["All"] + ticket_type_options, default=["All"])
 
+# Clear upload folder before saving new files
+for file in os.listdir(UPLOAD_FOLDER):
+    os.remove(os.path.join(UPLOAD_FOLDER, file))
+
+# Save uploaded files
 valid_files = []
 if uploaded_files:
     for uploaded_file in uploaded_files:
@@ -110,25 +99,20 @@ if analyze_btn and uploaded_files:
             all_tickets.extend(parse_ticket_xml(full_path))
 
     if all_tickets:
+        # Filter by selected Group(s) and Ticket Type(s)
         selected_ids = [gid for gid, name in group_options.items() if name in group_selection]
-        filtered_tickets = []
-        for ticket in all_tickets:
-            group_match = "All" in group_selection or ticket["group_id"] in selected_ids
-            type_match = "All" in selected_types or ticket.get("type") in selected_types
-            if group_match and type_match:
-                filtered_tickets.append(ticket)
+        filtered_tickets = [
+            ticket for ticket in all_tickets
+            if (
+                "All" in group_selection or ticket["group_id"] in selected_ids
+            ) and (
+                "All" in selected_types or ticket.get("type") in selected_types
+            )
+        ]
 
         df = pd.DataFrame(filtered_tickets)
         today = datetime.datetime.now().strftime("%Y%m%d")
         csv_file = f"ticket_analysis_output_{today}.csv"
-
-        # Order the columns for cleaner CSV
-        selected_columns = [
-            "ticket_id", "subject", "created_at", "priority", "group_id",
-            "type", "current_issue_type", "issue_type_auto", "ticket_type_auto",
-            "summary_problem", "summary_resolution", "combined_text"
-        ]
-        df = df[[col for col in selected_columns if col in df.columns]]
         df.to_csv(csv_file, index=False)
 
         generate_insights(UPLOAD_FOLDER)
