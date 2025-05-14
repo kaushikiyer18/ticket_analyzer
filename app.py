@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import zipfile
 import datetime
+import shutil
 from pathlib import Path
 from parser import parse_ticket_xml
 from analyzer import analyze_tickets
@@ -76,7 +77,11 @@ selected_types = st.multiselect("🎯 Select Ticket Types to Include", options=[
 
 # Clear upload folder before saving new files
 for file in os.listdir(UPLOAD_FOLDER):
-    os.remove(os.path.join(UPLOAD_FOLDER, file))
+    file_path = os.path.join(UPLOAD_FOLDER, file)
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+    elif os.path.isdir(file_path):
+        shutil.rmtree(file_path)
 
 # Save uploaded files
 valid_files = []
